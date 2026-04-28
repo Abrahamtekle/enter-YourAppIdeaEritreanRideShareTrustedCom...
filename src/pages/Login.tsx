@@ -40,9 +40,9 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Hero */}
-      <div className="gradient-hero px-6 pt-16 pb-12 flex flex-col items-center text-center">
-        <div className="mb-5">
-          <AppLogo size={72} />
+      <div className="gradient-hero px-6 pt-14 pb-12 flex flex-col items-center text-center">
+        <div className="mb-4 rounded-full overflow-hidden shadow-lg border-4 border-primary-foreground/20">
+          <AppLogo size={96} />
         </div>
         <h1 className="text-3xl font-bold text-primary-foreground">HabeshaRide</h1>
         <p className="text-primary-foreground/70 mt-2 text-base">
