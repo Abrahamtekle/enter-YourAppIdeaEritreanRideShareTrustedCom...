@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, ArrowLeft } from "lucide-react";
 import { BottomNav } from "./BottomNav";
+import { AppLogo } from "./AppLogo";
 import { cn } from "@/lib/utils";
 
 const HIDE_NAV_PATHS = ["/login", "/signup"];
@@ -41,7 +42,7 @@ export function AppShell({ children, title, showBack, headerClassName }: AppShel
             </button>
           )}
           <h1 className={cn("font-bold flex-1", title ? "text-lg" : "text-xl tracking-tight")}>
-            {title ?? "HabeshaRide"}
+            {title ? title : <AppLogo size={36} showText textClassName="font-bold text-xl tracking-tight text-primary-foreground" />}
           </h1>
           {!showBack && (
             <button

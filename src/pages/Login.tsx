@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Phone, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AppLogo } from "@/components/AppLogo";
 import { useApp } from "@/context/AppContext";
 import { MOCK_USERS } from "@/data/mockData";
 
@@ -40,8 +41,8 @@ export default function Login() {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Hero */}
       <div className="gradient-hero px-6 pt-16 pb-12 flex flex-col items-center text-center">
-        <div className="w-20 h-20 rounded-2xl bg-primary-foreground/10 border border-primary-foreground/20 flex items-center justify-center mb-4">
-          <Phone size={36} className="text-accent" />
+        <div className="mb-5">
+          <AppLogo size={72} />
         </div>
         <h1 className="text-3xl font-bold text-primary-foreground">HabeshaRide</h1>
         <p className="text-primary-foreground/70 mt-2 text-base">
