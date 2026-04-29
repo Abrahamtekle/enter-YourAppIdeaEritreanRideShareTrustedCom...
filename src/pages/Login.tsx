@@ -21,7 +21,11 @@ export default function Login() {
     setError("");
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) {
-      setError(err.message);
+      if (err.message.toLowerCase().includes("not confirmed") || err.message.toLowerCase().includes("email")) {
+        setError("Please verify your email first. Check your inbox for the confirmation link.");
+      } else {
+        setError("Incorrect email or password.");
+      }
     } else {
       navigate("/");
     }

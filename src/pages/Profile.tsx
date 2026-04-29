@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Settings, MapPin, ArrowRight, Calendar, CheckCircle2, LogOut } from "lucide-react";
+import { Settings, MapPin, ArrowRight, Calendar, CheckCircle2, LogOut, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/AppShell";
@@ -8,8 +8,9 @@ import { VerifiedBadge, PhoneVerifiedBadge } from "@/components/VerifiedBadge";
 import { useApp } from "@/context/AppContext";
 import { supabase } from "@/integrations/supabase/client";
 import { mapProfile, mapRide } from "@/lib/db";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import type { User, Ride } from "@/types";
 
 function formatDate(dateStr: string) {
@@ -45,15 +46,41 @@ function MiniRideCard({ ride, onClick }: { ride: Ride; onClick: () => void }) {
 export default function Profile() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const { currentUser, isLoggedIn, logout } = useApp();
+  const { currentUser, isLoggedIn, logout, refreshProfile } = useApp();
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<"posted" | "booked">("posted");
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [postedRides, setPostedRides] = useState<Ride[]>([]);
   const [bookedRides, setBookedRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const isOwn = !id || id === currentUser?.id;
   const userId = isOwn ? currentUser?.id : id;
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    setUploadingPhoto(true);
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const filePath = `${currentUser.id}/avatar.${ext}`;
+    const { data: storageData, error } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file, { upsert: true });
+    if (error) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } else if (storageData) {
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(storageData.path);
+      await supabase
+        .from("profiles")
+        .update({ avatar_url: urlData.publicUrl })
+        .eq("id", currentUser.id);
+      await refreshProfile();
+      toast({ title: "Photo updated!" });
+    }
+    setUploadingPhoto(false);
+  };
 
   useEffect(() => {
     if (!userId) { setLoading(false); return; }
@@ -133,7 +160,23 @@ export default function Profile() {
       <div className="gradient-hero px-4 pt-6 pb-10">
         <div className="flex items-start gap-4">
           <div className="relative shrink-0">
-            <img src={user.avatarUrl} alt={user.name} className="w-20 h-20 rounded-full border-4 border-primary-foreground/30 object-cover" />
+            <button
+              onClick={() => isOwn && fileRef.current?.click()}
+              className={cn("relative w-20 h-20 rounded-full overflow-hidden border-4 border-primary-foreground/30", isOwn && "cursor-pointer")}
+            >
+              <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+              {isOwn && (
+                <div className={cn(
+                  "absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity",
+                  uploadingPhoto ? "opacity-100" : "opacity-0 hover:opacity-100"
+                )}>
+                  <Camera size={20} className="text-white" />
+                </div>
+              )}
+            </button>
+            {isOwn && (
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarUpload} />
+            )}
             {user.isVerified && (
               <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary border-2 border-primary-foreground flex items-center justify-center">
                 <CheckCircle2 size={13} className="text-primary-foreground" />
