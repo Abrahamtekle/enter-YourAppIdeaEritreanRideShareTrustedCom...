@@ -1,40 +1,31 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Phone, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/AppLogo";
-import { useApp } from "@/context/AppContext";
-import { MOCK_USERS } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useApp();
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (!phone.trim()) {
-      setError("Please enter your phone number.");
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter your email and password.");
       return;
     }
     setLoading(true);
     setError("");
-
-    // Demo: find user by phone or log in as demo user
-    setTimeout(() => {
-      const found = MOCK_USERS.find((u) =>
-        u.phone.replace(/\D/g, "").endsWith(phone.replace(/\D/g, ""))
-      );
-      if (found) {
-        login(found);
-        navigate("/");
-      } else {
-        // Demo: just proceed as demo user
-        navigate("/signup");
-      }
-      setLoading(false);
-    }, 800);
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    if (err) {
+      setError(err.message);
+    } else {
+      navigate("/");
+    }
+    setLoading(false);
   };
 
   return (
@@ -54,31 +45,43 @@ export default function Login() {
       <div className="flex-1 px-6 py-8 flex flex-col gap-5">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Welcome back</h2>
-          <p className="text-muted-foreground text-sm mt-1">Sign in with your phone number</p>
+          <p className="text-muted-foreground text-sm mt-1">Sign in to your account</p>
         </div>
 
         <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Phone number</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            Email address
+          </label>
           <div className="relative">
-            <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="w-full pl-9 pr-4 py-3.5 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Password</label>
+          <div className="relative">
+            <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              placeholder="+1 (403) 555-0101"
+              placeholder="••••••••"
               className="w-full pl-9 pr-4 py-3.5 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           {error && <p className="text-xs text-destructive mt-1">{error}</p>}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          <strong>Demo:</strong> Try phone <code className="bg-muted px-1 rounded">555-0101</code> (Dawit) or any number to register.
-        </p>
-
         <Button onClick={handleLogin} disabled={loading} size="lg" className="w-full">
-          {loading ? "Signing in..." : "Continue"}
+          {loading ? "Signing in..." : "Sign In"}
           {!loading && <ArrowRight size={18} />}
         </Button>
 

@@ -1,0 +1,145 @@
+
+-- Profiles table (extends auth users)
+create table if not exists profiles (
+  id uuid references auth.users(id) on delete cascade primary key,
+  name text not null,
+  phone text,
+  avatar_url text,
+  is_verified boolean default false,
+  is_phone_verified boolean default false,
+  rating numeric(3,2) default 0,
+  review_count int default 0,
+  bio text,
+  created_at timestamptz default now()
+);
+
+-- Rides table
+create table if not exists rides (
+  id uuid primary key default gen_random_uuid(),
+  driver_id uuid references profiles(id) on delete cascade not null,
+  from_city text not null,
+  to_city text not null,
+  ride_date date not null,
+  departure_time text not null,
+  price_per_seat numeric(10,2) not null,
+  total_seats int not null,
+  available_seats int not null,
+  notes text,
+  status text default 'active',
+  created_at timestamptz default now()
+);
+
+-- Bookings table
+create table if not exists bookings (
+  id uuid primary key default gen_random_uuid(),
+  ride_id uuid references rides(id) on delete cascade not null,
+  passenger_id uuid references profiles(id) on delete cascade not null,
+  status text default 'pending',
+  created_at timestamptz default now()
+);
+
+-- Chats table
+create table if not exists chats (
+  id uuid primary key default gen_random_uuid(),
+  ride_id uuid references rides(id) on delete set null,
+  created_at timestamptz default now()
+);
+
+-- Chat participants
+create table if not exists chat_participants (
+  chat_id uuid references chats(id) on delete cascade,
+  user_id uuid references profiles(id) on delete cascade,
+  primary key (chat_id, user_id)
+);
+
+-- Messages table
+create table if not exists messages (
+  id uuid primary key default gen_random_uuid(),
+  chat_id uuid references chats(id) on delete cascade not null,
+  sender_id uuid references profiles(id) on delete cascade not null,
+  text text not null,
+  created_at timestamptz default now()
+);
+
+-- Reviews table
+create table if not exists reviews (
+  id uuid primary key default gen_random_uuid(),
+  reviewer_id uuid references profiles(id) on delete cascade not null,
+  reviewee_id uuid references profiles(id) on delete cascade not null,
+  ride_id uuid references rides(id) on delete cascade not null,
+  rating int not null,
+  comment text,
+  created_at timestamptz default now()
+);
+
+-- Enable RLS
+alter table profiles enable row level security;
+alter table rides enable row level security;
+alter table bookings enable row level security;
+alter table chats enable row level security;
+alter table chat_participants enable row level security;
+alter table messages enable row level security;
+alter table reviews enable row level security;
+
+-- Profiles policies
+create policy "Profiles are viewable by everyone" on profiles for select using (true);
+create policy "Users can insert own profile" on profiles for insert with check (auth.uid() = id);
+create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
+
+-- Rides policies
+create policy "Rides are viewable by everyone" on rides for select using (true);
+create policy "Authenticated users can insert rides" on rides for insert with check (auth.uid() = driver_id);
+create policy "Drivers can update own rides" on rides for update using (auth.uid() = driver_id);
+
+-- Bookings policies
+create policy "Users can view own bookings" on bookings for select using (auth.uid() = passenger_id or auth.uid() = (select driver_id from rides where id = ride_id));
+create policy "Authenticated users can insert bookings" on bookings for insert with check (auth.uid() = passenger_id);
+create policy "Drivers can update booking status" on bookings for update using (auth.uid() = (select driver_id from rides where id = ride_id) or auth.uid() = passenger_id);
+
+-- Chats policies
+create policy "Chat participants can view chats" on chats for select using (
+  exists (select 1 from chat_participants where chat_id = id and user_id = auth.uid())
+);
+create policy "Authenticated users can create chats" on chats for insert with check (auth.uid() is not null);
+
+-- Chat participants policies
+create policy "Participants can view chat participants" on chat_participants for select using (
+  exists (select 1 from chat_participants cp where cp.chat_id = chat_id and cp.user_id = auth.uid())
+);
+create policy "Authenticated users can add participants" on chat_participants for insert with check (auth.uid() is not null);
+
+-- Messages policies
+create policy "Chat participants can view messages" on messages for select using (
+  exists (select 1 from chat_participants where chat_id = messages.chat_id and user_id = auth.uid())
+);
+create policy "Chat participants can send messages" on messages for insert with check (
+  auth.uid() = sender_id and
+  exists (select 1 from chat_participants where chat_id = messages.chat_id and user_id = auth.uid())
+);
+
+-- Reviews policies
+create policy "Reviews are viewable by everyone" on reviews for select using (true);
+create policy "Authenticated users can insert reviews" on reviews for insert with check (auth.uid() = reviewer_id);
+
+-- Auto-create profile on signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, name, phone, avatar_url)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'name', 'User'),
+    new.raw_user_meta_data->>'phone',
+    new.raw_user_meta_data->>'avatar_url'
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create or replace trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Enable realtime for messages and rides
+alter publication supabase_realtime add table messages;
+alter publication supabase_realtime add table rides;

@@ -3109,7 +3109,273 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          created_at: string | null
+          id: string
+          passenger_id: string
+          ride_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          passenger_id: string
+          ride_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          passenger_id?: string
+          ride_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_passenger_id_fkey"
+            columns: ["passenger_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_ride_id_fkey"
+            columns: ["ride_id"]
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participants: {
+        Row: {
+          chat_id: string
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          user_id: string
+        }
+        Update: {
+          chat_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_chat_id_fkey"
+            columns: ["chat_id"]
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_participants_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chats: {
+        Row: {
+          created_at: string | null
+          id: string
+          ride_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          ride_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          ride_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chats_ride_id_fkey"
+            columns: ["ride_id"]
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          chat_id: string
+          created_at: string | null
+          id: string
+          sender_id: string
+          text: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string | null
+          id?: string
+          sender_id: string
+          text: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string | null
+          id?: string
+          sender_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_chat_id_fkey"
+            columns: ["chat_id"]
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          id: string
+          is_phone_verified: boolean | null
+          is_verified: boolean | null
+          name: string
+          phone: string | null
+          rating: number | null
+          review_count: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          id: string
+          is_phone_verified?: boolean | null
+          is_verified?: boolean | null
+          name: string
+          phone?: string | null
+          rating?: number | null
+          review_count?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          is_phone_verified?: boolean | null
+          is_verified?: boolean | null
+          name?: string
+          phone?: string | null
+          rating?: number | null
+          review_count?: number | null
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          ride_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          ride_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          rating?: number
+          reviewee_id?: string
+          reviewer_id?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_reviewee_id_fkey"
+            columns: ["reviewee_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_ride_id_fkey"
+            columns: ["ride_id"]
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rides: {
+        Row: {
+          available_seats: number
+          created_at: string | null
+          departure_time: string
+          driver_id: string
+          from_city: string
+          id: string
+          notes: string | null
+          price_per_seat: number
+          ride_date: string
+          status: string | null
+          to_city: string
+          total_seats: number
+        }
+        Insert: {
+          available_seats: number
+          created_at?: string | null
+          departure_time: string
+          driver_id: string
+          from_city: string
+          id?: string
+          notes?: string | null
+          price_per_seat: number
+          ride_date: string
+          status?: string | null
+          to_city: string
+          total_seats: number
+        }
+        Update: {
+          available_seats?: number
+          created_at?: string | null
+          departure_time?: string
+          driver_id?: string
+          from_city?: string
+          id?: string
+          notes?: string | null
+          price_per_seat?: number
+          ride_date?: string
+          status?: string | null
+          to_city?: string
+          total_seats?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rides_driver_id_fkey"
+            columns: ["driver_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

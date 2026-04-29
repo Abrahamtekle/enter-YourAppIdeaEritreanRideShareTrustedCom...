@@ -1,38 +1,72 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Phone, ChevronLeft, CheckCircle2 } from "lucide-react";
+import { User, Phone, Mail, Lock, ChevronLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useApp } from "@/context/AppContext";
-import type { User as UserType } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+
+function Field({
+  icon: Icon,
+  label,
+  required,
+  children,
+}: {
+  icon: React.FC<{ size?: number; className?: string }>;
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1 block">
+        <Icon size={12} className="text-primary" />
+        {label} {required && <span className="text-destructive">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { login } = useApp();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
-  const handleSignup = () => {
-    if (!name.trim() || !phone.trim()) return;
+  const handleSignup = async () => {
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError("Please fill in name, email and password.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
     setLoading(true);
+    setError("");
 
-    setTimeout(() => {
-      const newUser: UserType = {
-        id: `user-${Date.now()}`,
-        name: name.trim(),
-        phone,
-        avatarUrl: `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}&backgroundColor=1B6B3A&shapeColor=C9920A`,
-        isVerified: false,
-        isPhoneVerified: true,
-        rating: 0,
-        reviewCount: 0,
-        memberSince: new Date().toLocaleDateString("en-CA", { month: "long", year: "numeric" }),
-      };
-      login(newUser);
-      setDone(true);
+    const avatarUrl = `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(name)}&backgroundColor=1B6B3A&shapeColor=C9920A`;
+
+    const { error: err } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        data: { name, phone, avatar_url: avatarUrl },
+      },
+    });
+
+    if (err) {
+      setError(err.message);
       setLoading(false);
-    }, 800);
+      return;
+    }
+
+    setDone(true);
+    setLoading(false);
   };
 
   if (done) {
@@ -56,7 +90,6 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <div className="gradient-hero px-4 pt-10 pb-10 flex flex-col">
         <button
           onClick={() => navigate("/login")}
@@ -71,13 +104,8 @@ export default function Signup() {
         </p>
       </div>
 
-      {/* Form */}
       <div className="flex-1 px-6 py-8 flex flex-col gap-5">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1 block">
-            <User size={12} className="text-primary" />
-            Full name
-          </label>
+        <Field icon={User} label="Full name" required>
           <input
             type="text"
             value={name}
@@ -85,13 +113,19 @@ export default function Signup() {
             placeholder="e.g., Dawit Tesfaye"
             className="w-full px-4 py-3.5 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
-        </div>
+        </Field>
 
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1 block">
-            <Phone size={12} className="text-primary" />
-            Phone number
-          </label>
+        <Field icon={Mail} label="Email address" required>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full px-4 py-3.5 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </Field>
+
+        <Field icon={Phone} label="Phone number (optional)">
           <input
             type="tel"
             value={phone}
@@ -99,18 +133,31 @@ export default function Signup() {
             placeholder="+1 (403) 555-0000"
             className="w-full px-4 py-3.5 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
-        </div>
+        </Field>
+
+        <Field icon={Lock} label="Password" required>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSignup()}
+            placeholder="At least 6 characters"
+            className="w-full px-4 py-3.5 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </Field>
+
+        {error && <p className="text-xs text-destructive">{error}</p>}
 
         <div className="bg-accent-subtle border border-trust-border rounded-lg p-3">
           <p className="text-xs font-semibold text-trust-text mb-1">Community Verification</p>
           <p className="text-xs text-trust-text/80">
-            Phone verification keeps our community safe. Verified members get a badge on their profile.
+            Your profile helps build trust in our community.
           </p>
         </div>
 
         <Button
           onClick={handleSignup}
-          disabled={!name.trim() || !phone.trim() || loading}
+          disabled={!name.trim() || !email.trim() || !password.trim() || loading}
           size="lg"
           className="w-full mt-2"
         >

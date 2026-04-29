@@ -1,32 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeftRight, Search, MapPin, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/AppShell";
 import { RideCard } from "@/components/RideCard";
-import { useApp } from "@/context/AppContext";
-import { CANADIAN_CITIES } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { mapRide, mapProfile } from "@/lib/db";
+import type { Ride, User } from "@/types";
+
+const CANADIAN_CITIES = [
+  "Calgary", "Edmonton", "Red Deer", "Lethbridge", "Medicine Hat",
+  "Fort McMurray", "Vancouver", "Toronto", "Winnipeg", "Ottawa",
+];
+
+interface RideWithDriver { ride: Ride; driver: User }
 
 export default function Home() {
   const navigate = useNavigate();
-  const { rides, getUserById } = useApp();
   const [from, setFrom] = useState("Calgary");
   const [to, setTo] = useState("Edmonton");
   const [date, setDate] = useState("");
+  const [featured, setFeatured] = useState<RideWithDriver[]>([]);
+  const [loadingRides, setLoadingRides] = useState(true);
 
-  const handleSwap = () => {
-    setFrom(to);
-    setTo(from);
-  };
+  useEffect(() => {
+    const fetchRides = async () => {
+      const { data } = await supabase
+        .from("rides")
+        .select("*, profiles!driver_id(*)")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      if (data) {
+        const mapped = data.map((r) => ({
+          ride: mapRide(r as Record<string, unknown>),
+          driver: mapProfile((r as Record<string, unknown>).profiles as Record<string, unknown>),
+        }));
+        setFeatured(mapped);
+      }
+      setLoadingRides(false);
+    };
+    fetchRides();
+  }, []);
+
+  const handleSwap = () => { setFrom(to); setTo(from); };
 
   const handleSearch = () => {
     const params = new URLSearchParams({ from, to });
     if (date) params.set("date", date);
     navigate(`/rides?${params.toString()}`);
   };
-
-  // Featured rides (first 3 active rides)
-  const featuredRides = rides.filter((r) => r.status === "active").slice(0, 3);
 
   return (
     <AppShell>
@@ -45,7 +69,6 @@ export default function Home() {
         {/* Search Card */}
         <div className="bg-card rounded-xl p-4 shadow-card-hover">
           <div className="flex flex-col gap-3">
-            {/* From */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">From</label>
               <div className="relative">
@@ -55,14 +78,11 @@ export default function Home() {
                   onChange={(e) => setFrom(e.target.value)}
                   className="w-full pl-9 pr-4 py-3 rounded-lg border border-border bg-background text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
                 >
-                  {CANADIAN_CITIES.map((city) => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
+                  {CANADIAN_CITIES.map((c) => <option key={c}>{c}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* Swap button */}
             <div className="flex justify-center">
               <button
                 onClick={handleSwap}
@@ -72,7 +92,6 @@ export default function Home() {
               </button>
             </div>
 
-            {/* To */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">To</label>
               <div className="relative">
@@ -82,14 +101,11 @@ export default function Home() {
                   onChange={(e) => setTo(e.target.value)}
                   className="w-full pl-9 pr-4 py-3 rounded-lg border border-border bg-background text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
                 >
-                  {CANADIAN_CITIES.map((city) => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
+                  {CANADIAN_CITIES.map((c) => <option key={c}>{c}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* Date */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Date (optional)</label>
               <input
@@ -108,7 +124,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Stats strip */}
+      {/* Stats */}
       <div className="bg-card border-b border-border">
         <div className="flex divide-x divide-border">
           {[
@@ -136,13 +152,24 @@ export default function Home() {
             See all
           </button>
         </div>
-        <div className="flex flex-col gap-3">
-          {featuredRides.map((ride) => {
-            const driver = getUserById(ride.driverId);
-            if (!driver) return null;
-            return <RideCard key={ride.id} ride={ride} driver={driver} />;
-          })}
-        </div>
+
+        {loadingRides ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 rounded-lg bg-muted shimmer" />
+            ))}
+          </div>
+        ) : featured.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground text-sm">
+            No rides yet. Be the first to post one!
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {featured.map(({ ride, driver }) => (
+              <RideCard key={ride.id} ride={ride} driver={driver} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Community CTA */}
